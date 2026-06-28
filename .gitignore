@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+
+# Secrets / local config
+.env
+.env.*
+!.env.example
+
+# Runtime data (SQLite DB + WAL/SHM)
+data/
+*.sqlite
+*.db
+*.db-wal
+*.db-shm
+
+# Logs
+logs/
+*.log
+
+# Bundled fonts (optional, install via apt instead)
+assets/fonts/*.ttf
+assets/fonts/*.otf
+assets/fonts/*.ttc
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

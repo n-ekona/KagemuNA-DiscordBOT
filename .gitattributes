@@ -1,0 +1,12 @@
+# Normalize line endings in the repo to LF. Critical for shell scripts, which
+# must be LF to run on the Raspberry Pi (CRLF breaks the shebang).
+* text=auto eol=lf
+*.sh text eol=lf
+
+# Treat binaries as binary (no EOL conversion)
+*.png binary
+*.jpg binary
+*.ttf binary
+*.otf binary
+*.ttc binary
+*.db binary

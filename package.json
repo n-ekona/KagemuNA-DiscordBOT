@@ -1,0 +1,25 @@
+{
+  "name": "nekonabot",
+  "version": "1.0.0",
+  "description": "Discord bot that records voice-channel active time and per-channel message counts, and renders period band-graph rankings. Built to run on a Raspberry Pi.",
+  "type": "module",
+  "main": "src/index.js",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "deploy": "node src/deploy-commands.js",
+    "dev": "node --watch src/index.js",
+    "smoketest": "node scripts/smoketest.js",
+    "backup": "node scripts/backup.js"
+  },
+  "dependencies": {
+    "@napi-rs/canvas": "^1.0.1",
+    "better-sqlite3": "^12.11.1",
+    "discord.js": "^14.26.4",
+    "dotenv": "^17.4.2",
+    "luxon": "^3.7.2"
+  },
+  "license": "MIT"
+}
