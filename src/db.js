@@ -305,6 +305,31 @@ export function messageCountsByUser({ guildId, start, end, channelId, channelIds
   return prep(sql).all(params);
 }
 
+/** Total message count within [start, end). Optional channel filter. Used for per-day trends. */
+export function messageCountTotal({ guildId, start, end, channelId, channelIds }) {
+  let sql = `SELECT COUNT(*) AS c FROM messages
+             WHERE guild_id = @guildId AND created_at >= @start AND created_at < @end`;
+  const params = { guildId, start, end };
+  sql = appendChannelFilter(sql, params, { channelId, channelIds });
+  return prep(sql).get(params).c;
+}
+
+/**
+ * Total VC active milliseconds across all users, clipped to [start, end). Open
+ * sessions are treated as ending "now". Optional channel filter. Used for trends.
+ */
+export function vcTotalMs({ guildId, start, end, channelId, channelIds, now }) {
+  let sql = `
+    SELECT COALESCE(SUM( MIN(COALESCE(leave_at, @now), @end) - MAX(join_at, @start) ), 0) AS ms
+    FROM vc_sessions
+    WHERE guild_id = @guildId
+      AND join_at < @end
+      AND COALESCE(leave_at, @now) > @start`;
+  const params = { guildId, start, end, now };
+  sql = appendChannelFilter(sql, params, { channelId, channelIds });
+  return prep(sql).get(params).ms;
+}
+
 /**
  * Voice active milliseconds per user, clipped to [start, end). Open sessions are
  * treated as ending "now". Optional channel filter. Returns rows {user_id, ms} desc.

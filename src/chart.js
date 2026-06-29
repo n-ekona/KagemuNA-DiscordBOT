@@ -112,6 +112,7 @@ const COLORS = {
   bg: '#1e1f22',
   card: '#2b2d31',
   track: '#3a3c41',
+  grid: '#34363b',
   title: '#ffffff',
   subtitle: '#b5bac1',
   name: '#dbdee1',
@@ -209,6 +210,138 @@ export function renderBarChart({ title, subtitle, items, accent, formatValue, fo
   // Footer
   ctx.textAlign = 'left';
   ctx.textBaseline = 'alphabetic';
+  ctx.fillStyle = COLORS.footer;
+  ctx.font = font(14);
+  ctx.fillText(footer || 'nekonabot', pad, height - 16);
+
+  ctx.textAlign = 'left';
+  return canvas.toBuffer('image/png');
+}
+
+/**
+ * Render a per-day trend (推移) as a vertical column chart with an overlaid line,
+ * to a PNG buffer. Points are chronological (oldest -> newest).
+ *
+ * @param {object}   opts
+ * @param {string}   opts.title       headline
+ * @param {string}   opts.subtitle    period / context line
+ * @param {Array<{label:string,value:number}>} opts.points  chronological
+ * @param {string}   opts.accent      column color (hex)
+ * @param {(v:number)=>string} opts.formatValue  numeric value -> display text (axis + bar tops)
+ * @param {string}  [opts.footer]
+ * @returns {Buffer} PNG
+ */
+export function renderTrendChart({ title, subtitle, points, accent, formatValue, footer }) {
+  const n = Math.max(1, points.length);
+  const width = 1000;
+  const pad = 32;
+  const headerH = 104;
+  const footerH = 44;
+  const plotH = 340;
+  const axisLabelH = 44;
+  const leftAxisW = 84;
+
+  const plotTop = headerH;
+  const plotLeft = pad + leftAxisW;
+  const plotRight = width - pad;
+  const plotBottom = plotTop + plotH;
+  const plotW = plotRight - plotLeft;
+  const height = plotBottom + axisLabelH + footerH;
+
+  const canvas = createCanvas(width, height);
+  const ctx = canvas.getContext('2d');
+
+  // Background
+  ctx.fillStyle = COLORS.bg;
+  ctx.fillRect(0, 0, width, height);
+
+  // Header
+  ctx.textBaseline = 'alphabetic';
+  ctx.fillStyle = COLORS.title;
+  ctx.font = font(30, 'bold');
+  ctx.fillText(title, pad, 48);
+  ctx.fillStyle = COLORS.subtitle;
+  ctx.font = font(18);
+  ctx.fillText(subtitle, pad, 78);
+  ctx.fillStyle = accent;
+  ctx.fillRect(pad, headerH - 18, width - pad * 2, 3);
+
+  const maxValue = Math.max(1, ...points.map((p) => p.value));
+
+  // Horizontal gridlines + y-axis labels (0 .. max in equal steps)
+  const STEPS = 4;
+  for (let i = 0; i <= STEPS; i += 1) {
+    const frac = i / STEPS;
+    const y = plotBottom - frac * plotH;
+    ctx.strokeStyle = COLORS.grid;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(plotLeft, y);
+    ctx.lineTo(plotRight, y);
+    ctx.stroke();
+    ctx.fillStyle = COLORS.footer;
+    ctx.font = font(13);
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(formatValue(maxValue * frac), plotLeft - 10, y);
+  }
+
+  // Columns
+  const slotW = plotW / n;
+  const barW = Math.max(3, Math.min(46, slotW * 0.62));
+  const tops = [];
+  points.forEach((p, i) => {
+    const cx = plotLeft + slotW * (i + 0.5);
+    const h = (p.value / maxValue) * plotH;
+    const top = plotBottom - h;
+    tops.push({ x: cx, y: top, value: p.value });
+    ctx.fillStyle = accent;
+    roundRect(ctx, cx - barW / 2, top, barW, Math.max(1, h), 5);
+    ctx.fill();
+  });
+
+  // Trend line + dots across the column tops (emphasises the 推移)
+  if (n > 1) {
+    ctx.strokeStyle = '#ffffff';
+    ctx.globalAlpha = 0.5;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    tops.forEach((t, i) => (i ? ctx.lineTo(t.x, t.y) : ctx.moveTo(t.x, t.y)));
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+  tops.forEach((t) => {
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(t.x, t.y, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  // Value labels above each column (only when not too crowded)
+  if (n <= 10) {
+    ctx.fillStyle = COLORS.value;
+    ctx.font = font(13, 'bold');
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    tops.forEach((t) => {
+      if (t.value > 0) ctx.fillText(formatValue(t.value), t.x, t.y - 6);
+    });
+  }
+
+  // X-axis date labels (thinned out so they don't overlap on long ranges)
+  ctx.fillStyle = COLORS.subtitle;
+  ctx.font = font(13);
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'alphabetic';
+  const step = Math.ceil(n / 12);
+  points.forEach((p, i) => {
+    if (i % step === 0 || i === n - 1) {
+      ctx.fillText(p.label, plotLeft + slotW * (i + 0.5), plotBottom + 24);
+    }
+  });
+
+  // Footer
+  ctx.textAlign = 'left';
   ctx.fillStyle = COLORS.footer;
   ctx.font = font(14);
   ctx.fillText(footer || 'nekonabot', pad, height - 16);

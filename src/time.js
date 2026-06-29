@@ -96,6 +96,30 @@ export function isValidTimezone(tz) {
   return DateTime.now().setZone(tz).isValid;
 }
 
+/**
+ * Split a half-open window [startMs, endMs) into per-day buckets aligned to local
+ * midnight in `timezone`. The first/last buckets are clipped to the window edges,
+ * so the final (current) day may be partial. Returns {start, end, label} per day
+ * with `label` formatted as "M/d". Guarded at 400 days against pathological ranges.
+ */
+export function enumerateDayBuckets(startMs, endMs, timezone) {
+  const zone = timezone || 'Asia/Tokyo';
+  const buckets = [];
+  let cur = DateTime.fromMillis(startMs, { zone }).startOf('day');
+  let guard = 0;
+  while (cur.toMillis() < endMs && guard < 400) {
+    const next = cur.plus({ days: 1 }).startOf('day');
+    buckets.push({
+      start: Math.max(cur.toMillis(), startMs),
+      end: Math.min(next.toMillis(), endMs),
+      label: cur.toFormat('M/d'),
+    });
+    cur = next;
+    guard += 1;
+  }
+  return buckets;
+}
+
 /** Human label for a stored [startMs, endMs) window (end is exclusive). */
 export function formatRangeLabel(startMs, endMs, timezone) {
   const zone = timezone || 'Asia/Tokyo';

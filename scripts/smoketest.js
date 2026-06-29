@@ -25,9 +25,9 @@ const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'nekonabot-smoke-'));
 process.env.DATABASE_PATH = path.join(tmpDir, 'smoketest.db');
 
 const { initDb, closeDb, ...db } = await import('../src/db.js');
-const { resolveRange, formatDuration } = await import('../src/time.js');
-const { buildVcRanking, buildMessageRanking } = await import('../src/aggregate.js');
-const { renderBarChart } = await import('../src/chart.js');
+const { resolveRange, formatDuration, enumerateDayBuckets } = await import('../src/time.js');
+const { buildVcRanking, buildMessageRanking, buildMessageTrend, buildVcTrend } = await import('../src/aggregate.js');
+const { renderBarChart, renderTrendChart } = await import('../src/chart.js');
 
 const GUILD = 'g1';
 const TEXT_CH = 'c-text';
@@ -131,6 +131,32 @@ fs.writeFileSync(outVc, vcPng);
 fs.writeFileSync(outMsg, msgPng);
 console.log(`  → wrote sample charts:\n     ${outVc}\n     ${outMsg}`);
 
+console.log('\n4c) Daily trend (推移)');
+// u1 posted m-a{0..11} at now-i*HOUR plus the dedup'd m-dup at `now`: 13 messages
+// over the past ~12h, all within the 7d window -> trend total must equal 18 (all users).
+const buckets = enumerateDayBuckets(range.start, range.end, 'Asia/Tokyo');
+check('enumerateDayBuckets yields 7–8 day buckets for 7d', buckets.length >= 7 && buckets.length <= 8);
+check('day buckets are chronological & clipped to window', buckets[0].start === range.start && buckets[buckets.length - 1].end === range.end);
+const msgTrend = buildMessageTrend({ guildId: GUILD, start: range.start, end: range.end, zone: 'Asia/Tokyo' });
+check('message trend total matches ranking total (18)', msgTrend.total === 18);
+check('message trend has one point per day', msgTrend.points.length === buckets.length);
+const msgTrendCh = buildMessageTrend({ guildId: GUILD, start: range.start, end: range.end, zone: 'Asia/Tokyo', channelId: VOICE_CH });
+check('message trend channel filter (voice ch has none)', msgTrendCh.total === 0);
+const vcTrend = buildVcTrend({ guildId: GUILD, start: range.start, end: range.end, zone: 'Asia/Tokyo', now });
+check('vc trend total ≈ ranking total seconds', Math.abs(vcTrend.total - vc.totalSec) < 5);
+const trendPng = renderTrendChart({
+  title: 'チャット数の推移',
+  subtitle: range.label,
+  points: msgTrend.points,
+  accent: '#5865f2',
+  formatValue: (v) => `${Math.round(v)}件`,
+  footer: 'smoketest',
+});
+check('trend chart is a non-empty PNG', Buffer.isBuffer(trendPng) && pngMagic(trendPng));
+const outTrend = path.join(tmpDir, 'trend.png');
+fs.writeFileSync(outTrend, trendPng);
+console.log(`     ${outTrend}`);
+
 console.log('\n4b) Atomic voice transition (recordVoiceTransition)');
 const openCount = (uid) =>
   db.getDb().prepare('SELECT COUNT(*) AS c FROM vc_sessions WHERE guild_id=? AND user_id=? AND active=1').get(GUILD, uid).c;
@@ -216,7 +242,7 @@ check('clampMarkdownHeadings: H4 -> bold', fmt.clampMarkdownHeadings('#### 見�
 check('clampMarkdownHeadings: H3 unchanged', fmt.clampMarkdownHeadings('### 見出し') === '### 見出し');
 
 console.log('\n8) Slash command definitions (toJSON validation)');
-for (const cmdName of ['graph', 'event', 'eventset', 'stats', 'settings', 'help', 'ping', 'forum-active', 'forum-summary', 'shiritori']) {
+for (const cmdName of ['graph', 'trend', 'event', 'eventset', 'stats', 'settings', 'help', 'ping', 'forum-active', 'forum-summary', 'shiritori']) {
   const mod = await import(`../src/commands/${cmdName}.js`);
   let json = null;
   try {

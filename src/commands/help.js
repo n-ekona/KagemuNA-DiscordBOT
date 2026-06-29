@@ -17,6 +17,9 @@ export default {
             '**/graph** — 期間を指定して集計を帯グラフ（画像）で表示\n' +
             '　`metric`(VC/メッセージ/両方) `period`(プリセット) `from` `to` `channel` `top`\n' +
             '　例: `/graph period:直近7日` / `/graph from:2026-06-01 to:2026-06-27 channel:#general`\n' +
+            '**/trend** — 日ごとのチャット数（やVC時間）の推移を折れ線付き棒グラフで表示\n' +
+            '　`metric`(メッセージ/VC) `period`(未指定なら 週＋月 を両方) `from` `to` `channel`\n' +
+            '　例: `/trend`（週と月の推移） / `/trend metric:VC period:直近30日`\n' +
             '**/event** — 開催中イベント期間の集計を帯グラフで表示（管理者が期間を設定）\n' +
             '**/help** — この使い方 ・ **/ping** — 応答確認',
         },
