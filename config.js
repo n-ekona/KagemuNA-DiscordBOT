@@ -60,6 +60,12 @@ export const config = {
   // --- Shiritori game ---
   /** Channel where the shiritori game runs (free-play: each message is a turn). */
   shiritoriChannelId: process.env.SHIRITORI_CHANNEL_ID || '1483292706414526524',
+
+  // --- Command execution log ---
+  /** Channel that receives a real-time embed for every slash-command execution. Empty = disabled. */
+  logChannelId: process.env.LOG_CHANNEL_ID || '1521209178100596939',
+  /** Informational: the guild the log channel lives in (BotTestServer for nekoNA Circle). */
+  logGuildId: process.env.LOG_GUILD_ID || '1510242400709378108',
 };
 
 /** Throw a helpful error if required configuration is missing. */
